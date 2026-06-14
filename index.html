@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="プール活動記録">
+<meta name="theme-color" content="#0277bd">
+<title>プール活動記録</title>
+<style>
+  :root {
+    --blue: #0277bd;
+    --blue-dark: #01579b;
+    --blue-light: #e1f5fe;
+    --teal: #00838f;
+    --red: #c62828;
+    --red-light: #ffebee;
+    --amber: #ff8f00;
+    --green: #2e7d32;
+    --green-light: #e8f5e9;
+    --gray: #757575;
+    --gray-light: #f5f5f5;
+    --border: #ddd;
+  }
+  * { box-sizing: border-box; }
+  button, .tap { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic", sans-serif;
+    margin: 0;
+    background: #fafafa;
+    color: #212121;
+    font-size: 15px;
+  }
+  header {
+    background: var(--blue);
+    color: #fff;
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  header h1 { font-size: 20px; margin: 0; flex: 1; display: flex; align-items: center; gap: 8px; }
+  .mode-badge {
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    background: rgba(255,255,255,.2);
+    border: 1px solid rgba(255,255,255,.4);
+    white-space: nowrap;
+  }
+  .mode-badge.cloud { background: #00c853; border-color: #00c853; }
+
+  nav {
+    display: flex;
+    background: #fff;
+    border-bottom: 2px solid var(--border);
+    overflow-x: auto;
+  }
+  nav button {
+    border: none;
+    background: none;
+    padding: 14px 18px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--gray);
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    white-space: nowrap;
+  }
+  nav button.active { color: var(--blue); border-bottom-color: var(--blue); }
+
+  main { padding: 16px; max-width: 980px; margin: 0 auto; }
+  .view { display: none; }
+  .view.active { display: block; }
+
+  .card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.04);
+  }
+  .card h2 { margin: 0 0 12px; font-size: 16px; color: var(--blue-dark); display: flex; align-items: center; gap: 8px; }
+  .card h2 .num { background: var(--blue); color:#fff; width: 26px; height: 26px; border-radius: 50%; display:inline-flex; align-items:center; justify-content:center; font-size: 14px; }
+
+  .row { display: flex; flex-wrap: wrap; gap: 12px; }
+  .field { display: flex; flex-direction: column; gap: 4px; flex: 1 1 140px; min-width: 120px; }
+  .field.wide { flex: 1 1 100%; }
+  .field label { font-size: 13px; color: var(--gray); font-weight: 600; }
+  .field .unit { color: var(--gray); font-weight: 400; }
+  input, select {
+    font: inherit;
+    padding: 9px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: #fff;
+    width: 100%;
+  }
+  input:focus, select:focus { outline: 2px solid var(--blue-light); border-color: var(--blue); }
+
+  button.btn {
+    font: inherit;
+    font-weight: 600;
+    padding: 10px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--blue);
+    background: var(--blue);
+    color: #fff;
+    cursor: pointer;
+  }
+  button.btn.ghost { background: #fff; color: var(--blue); }
+  button.btn.gray { background: #fff; color: var(--gray); border-color: var(--border); }
+  button.btn.danger { background: #fff; color: var(--red); border-color: var(--red); }
+  button.btn.sm { padding: 6px 12px; font-size: 13px; }
+  .toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 16px; }
+  .toolbar .spacer { flex: 1; }
+
+  .session-card { border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-bottom: 12px; background: var(--blue-light); }
+  .session-card .session-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .session-card .session-head .badge { background: var(--teal); color: #fff; padding: 3px 10px; border-radius: 6px; font-size: 13px; font-weight: 700; }
+  .session-card .session-head .spacer { flex: 1; }
+
+  .chlorine-grid { display: flex; flex-wrap: wrap; gap: 14px; }
+  .chlorine-box { flex: 1 1 220px; border: 1px dashed var(--border); border-radius: 8px; padding: 12px; }
+  .chlorine-box h3 { margin: 0 0 8px; font-size: 14px; color: var(--teal); }
+
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { border: 1px solid var(--border); padding: 8px 10px; text-align: left; }
+  th { background: var(--blue-light); color: var(--blue-dark); font-size: 13px; }
+  tr.clickable:hover { background: #f0f9ff; cursor: pointer; }
+  .empty { text-align: center; color: var(--gray); padding: 40px 10px; }
+
+  .pill { display:inline-block; padding: 2px 8px; border-radius: 12px; font-size: 12px; background: var(--gray-light); color: var(--gray); }
+  .hint { font-size: 13px; color: var(--gray); line-height: 1.6; }
+  .saved-note { font-size: 13px; color: var(--green); }
+  .warn { color: var(--red); font-size: 13px; }
+
+  .list-item { display:flex; align-items:center; gap:10px; padding: 10px; border:1px solid var(--border); border-radius: 8px; margin-bottom: 8px; background:#fff; }
+  .list-item .name { flex: 1; font-weight: 600; }
+
+  textarea { font: inherit; width: 100%; min-height: 90px; padding: 9px 10px; border: 1px solid var(--border); border-radius: 8px; }
+
+  dialog { border: none; border-radius: 12px; padding: 0; max-width: 560px; width: 92%; box-shadow: 0 10px 40px rgba(0,0,0,.2); }
+  dialog::backdrop { background: rgba(0,0,0,.4); }
+  .modal-body { padding: 20px; }
+  .modal-body h2 { margin-top: 0; }
+
+  /* ---------- 印刷レイアウト ---------- */
+  #printArea { display: none; }
+  @media print {
+    @page { size: A4 portrait; margin: 12mm; }
+    header, nav, .toolbar, .no-print, main { display: none !important; }
+    #printArea { display: block !important; }
+    body { background: #fff; font-size: 12px; }
+    #printArea h1 { font-size: 18px; text-align: center; margin: 0 0 4px; }
+    #printArea .pmeta { text-align: center; color: #555; margin-bottom: 12px; font-size: 12px; }
+    #printArea table { width: 100%; margin-bottom: 10px; }
+    #printArea th, #printArea td { border: 1px solid #333; padding: 5px 6px; }
+    #printArea .sig { margin-top: 18px; font-size: 12px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>🏊 プール活動記録 <span class="mode-badge" id="modeBadge">ローカル保存</span></h1>
+</header>
+
+<nav>
+  <button data-view="entry" class="active">記録入力</button>
+  <button data-view="list">一覧</button>
+  <button data-view="settings">設定</button>
+</nav>
+
+<main>
+  <!-- ============ 記録入力 ============ -->
+  <section class="view active" id="view-entry">
+    <div class="toolbar">
+      <div class="field" style="flex:0 0 auto;">
+        <label>日付</label>
+        <input type="date" id="entryDate">
+      </div>
+      <div class="spacer"></div>
+      <button class="btn ghost sm" id="btnPrint">🖨 印刷</button>
+      <button class="btn sm" id="btnSave">保存</button>
+    </div>
+    <div id="saveStatus" class="saved-note" style="margin:-6px 0 12px;"></div>
+
+    <!-- 塩素濃度（1日2回） -->
+    <div class="card">
+      <h2>塩素濃度<span class="hint" style="font-weight:400;">（1日2回）</span></h2>
+      <div class="chlorine-grid">
+        <div class="chlorine-box">
+          <h3>1回目（始業前など）</h3>
+          <div class="row">
+            <div class="field"><label>時刻</label><input type="time" id="cl1Time"></div>
+            <div class="field"><label>濃度 <span class="unit">mg/L</span></label><input type="number" step="0.1" inputmode="decimal" id="cl1Val" placeholder="0.4"></div>
+          </div>
+        </div>
+        <div class="chlorine-box">
+          <h3>2回目（午後など）</h3>
+          <div class="row">
+            <div class="field"><label>時刻</label><input type="time" id="cl2Time"></div>
+            <div class="field"><label>濃度 <span class="unit">mg/L</span></label><input type="number" step="0.1" inputmode="decimal" id="cl2Val" placeholder="0.4"></div>
+          </div>
+        </div>
+      </div>
+      <div class="hint" style="margin-top:8px;">遊離残留塩素の基準値は通常 0.4〜1.0 mg/L です。</div>
+    </div>
+
+    <!-- 入水セッション -->
+    <div id="sessions"></div>
+    <button class="btn ghost" id="btnAddSession" style="width:100%;">＋ 入水クラスを追加</button>
+
+    <!-- 備考・記録者 -->
+    <div class="card" style="margin-top:16px;">
+      <h2>その他</h2>
+      <div class="row">
+        <div class="field"><label>天気</label>
+          <select id="weather">
+            <option value="">—</option>
+            <option>晴れ</option><option>くもり</option><option>雨</option><option>くもり時々晴れ</option>
+          </select>
+        </div>
+        <div class="field"><label>記録者</label><input id="recorder" list="staffList" placeholder="氏名"></div>
+      </div>
+      <div class="field wide" style="margin-top:12px;"><label>備考</label><textarea id="note" placeholder="体調不良児・中止判断・特記事項など"></textarea></div>
+      <div id="auditInfo" class="hint" style="margin-top:10px;"></div>
+    </div>
+  </section>
+
+  <!-- ============ 一覧 ============ -->
+  <section class="view" id="view-list">
+    <div class="toolbar">
+      <div class="field" style="flex:0 0 auto;"><label>年月でしぼり込み</label><input type="month" id="filterMonth"></div>
+      <div class="spacer"></div>
+      <button class="btn gray sm" id="btnCsv">CSV書き出し</button>
+      <button class="btn gray sm" id="btnBackup">バックアップ保存</button>
+      <button class="btn gray sm" id="btnRestore">復元</button>
+    </div>
+    <div id="listArea"></div>
+  </section>
+
+  <!-- ============ 設定 ============ -->
+  <section class="view" id="view-settings">
+    <div class="card">
+      <h2>クラス名の設定</h2>
+      <p class="hint">プールに入るクラスを登録します。入力画面の選択肢になります。3〜5歳児のクラス名を園に合わせて自由に追加してください。</p>
+      <div id="classList"></div>
+      <div class="row" style="margin-top:10px;">
+        <div class="field"><input id="newClassName" placeholder="例）ひまわり組（5歳児）"></div>
+        <button class="btn sm" id="btnAddClass" style="flex:0 0 auto;">追加</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>職員名の登録（任意）</h2>
+      <p class="hint">監視者・トイレ・入水保育者・記録者の入力候補に出ます。手入力もできます。</p>
+      <div id="staffMaster"></div>
+      <div class="row" style="margin-top:10px;">
+        <div class="field"><input id="newStaffName" placeholder="例）山田 花子"></div>
+        <button class="btn sm" id="btnAddStaff" style="flex:0 0 auto;">追加</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>クラウド共有（複数端末で同じ記録を使う）</h2>
+      <p class="hint">
+        初期状態は<b>この端末だけに保存</b>されます。複数の端末・職員で同じ記録を共有するには、無料の Firebase を設定します。
+        設定方法は同じフォルダの「<b>セットアップ手順.md</b>」を参照してください。下の欄に Firebase の設定（firebaseConfig）を貼り付けて保存すると、自動でクラウド共有に切り替わります。
+      </p>
+      <div class="field wide"><label>Firebase 設定（JSON）</label>
+        <textarea id="fbConfig" placeholder='{
+  "apiKey": "...",
+  "authDomain": "...",
+  "projectId": "...",
+  ...
+}' style="min-height:140px; font-family:monospace; font-size:13px;"></textarea>
+      </div>
+      <div class="row" style="margin-top:10px;">
+        <button class="btn sm" id="btnSaveFb">保存して接続</button>
+        <button class="btn gray sm" id="btnClearFb">クラウドを解除（ローカルに戻す）</button>
+      </div>
+      <div id="fbStatus" class="hint" style="margin-top:8px;"></div>
+    </div>
+  </section>
+</main>
+
+<!-- 印刷用 -->
+<div id="printArea"></div>
+
+<datalist id="staffList"></datalist>
+<datalist id="classDatalist"></datalist>
+
+<!-- 復元用の隠しファイル入力 -->
+<input type="file" id="restoreFile" accept="application/json" style="display:none;">
+
+<script type="module">
+/* =========================================================================
+   プール活動記録 — 単一HTMLアプリ
+   - 既定: localStorage に保存（この端末だけ）
+   - Firebase 設定を入れると Firestore でクラウド共有に切替
+   ========================================================================= */
+
+const LS_DATA = 'pool_app_data_v1';     // records / classes / staff
+const LS_FB   = 'pool_app_fbconfig_v1'; // Firebaseの設定JSON
+
+// ---- アプリ状態 ----
+let state = {
+  records: {},   // { 'YYYY-MM-DD': {date, weather, recorder, note, chlorine:{...}, sessions:[...], createdAt, updatedAt} }
+  classes: [],   // [{id, name}]
+  staff: [],     // ['氏名', ...]
+};
+let cloud = null;       // Firestore接続オブジェクト（クラウド時のみ）
+let currentDate = todayStr();
+
+// ============ 共通ユーティリティ ============
+function todayStr() {
+  const d = new Date(); const z = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`;
+}
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+function fmtDateJa(s) {
+  if (!s) return '';
+  const [y,m,d] = s.split('-').map(Number);
+  const w = ['日','月','火','水','木','金','土'][new Date(y,m-1,d).getDay()];
+  return `${y}年${m}月${d}日（${w}）`;
+}
+function fmtStamp(ts) {
+  if (!ts) return '';
+  const d = new Date(ts); const z = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}/${z(d.getMonth()+1)}/${z(d.getDate())} ${z(d.getHours())}:${z(d.getMinutes())}`;
+}
+function el(id) { return document.getElementById(id); }
+function esc(s) { return String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+// ============ 保存ロジック（ローカル / クラウド共通入口） ============
+function saveLocal() {
+  localStorage.setItem(LS_DATA, JSON.stringify(state));
+}
+function loadLocal() {
+  try {
+    const raw = localStorage.getItem(LS_DATA);
+    if (raw) state = Object.assign(state, JSON.parse(raw));
+  } catch (e) { console.warn('ローカル読込失敗', e); }
+  if (!state.classes.length) {
+    // 初期サンプル（あとで設定画面から自由に変更可）
+    state.classes = [
+      {id: uid(), name: '3歳児クラス'},
+      {id: uid(), name: '4歳児クラス'},
+      {id: uid(), name: '5歳児クラス'},
+    ];
+  }
+}
+
+// 1日分のレコードを保存（ローカル＋クラウド）
+async function persistRecord(rec) {
+  state.records[rec.date] = rec;
+  saveLocal();
+  if (cloud) {
+    try { await cloud.saveRecord(rec); }
+    catch (e) { console.error(e); alert('クラウド保存に失敗しました。通信状態を確認してください。'); }
+  }
+}
+// マスタ（クラス・職員）を保存
+async function persistMaster() {
+  saveLocal();
+  if (cloud) { try { await cloud.saveMaster({classes: state.classes, staff: state.staff}); } catch(e){ console.error(e);} }
+}
+
+// ============ Firebase (Firestore) 連携 ============
+async function connectCloud(configObj) {
+  const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
+  const fs = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+  const app = initializeApp(configObj);
+  const db = fs.getFirestore(app);
+
+  const recCol = fs.collection(db, 'pool_records');
+  const masterDoc = fs.doc(db, 'pool_master', 'main');
+
+  // リアルタイム購読（他端末の変更を自動反映）
+  fs.onSnapshot(recCol, snap => {
+    snap.forEach(docSnap => { state.records[docSnap.id] = docSnap.data(); });
+    saveLocal();
+    refreshAll();
+  });
+  fs.onSnapshot(masterDoc, docSnap => {
+    const d = docSnap.data();
+    if (d) {
+      if (Array.isArray(d.classes)) state.classes = d.classes;
+      if (Array.isArray(d.staff)) state.staff = d.staff;
+      saveLocal(); refreshAll();
+    }
+  });
+
+  return {
+    async saveRecord(rec) { await fs.setDoc(fs.doc(db, 'pool_records', rec.date), rec); },
+    async deleteRecord(date) { await fs.deleteDoc(fs.doc(db, 'pool_records', date)); },
+    async saveMaster(m) { await fs.setDoc(masterDoc, m); },
+  };
+}
+
+async function initCloudIfConfigured() {
+  const raw = localStorage.getItem(LS_FB);
+  if (!raw) return;
+  try {
+    const cfg = JSON.parse(raw);
+    cloud = await connectCloud(cfg);
+    setModeBadge(true);
+    el('fbStatus').textContent = '✅ クラウド共有に接続しました。';
+  } catch (e) {
+    console.error(e);
+    setModeBadge(false);
+    el('fbStatus').innerHTML = '<span class="warn">クラウド接続に失敗しました。設定内容を確認してください。</span>';
+  }
+}
+function setModeBadge(isCloud) {
+  const b = el('modeBadge');
+  b.textContent = isCloud ? 'クラウド共有中' : 'ローカル保存';
+  b.classList.toggle('cloud', isCloud);
+}
+
+// ============ 入水セッションのUI ============
+function classOptions(selected) {
+  const opts = state.classes.map(c => `<option value="${esc(c.name)}" ${c.name===selected?'selected':''}>${esc(c.name)}</option>`).join('');
+  return `<option value="">クラスを選択</option>${opts}`;
+}
+function sessionTemplate(s = {}, idx = 0) {
+  return `
+  <div class="session-card" data-idx="${idx}">
+    <div class="session-head">
+      <span class="badge">${idx+1}組目</span>
+      <div class="spacer"></div>
+      <button class="btn danger sm js-del-session" type="button">削除</button>
+    </div>
+    <div class="row">
+      <div class="field wide"><label>入水クラス</label>
+        <select class="js-class">${classOptions(s.className)}</select>
+      </div>
+    </div>
+    <div class="row" style="margin-top:10px;">
+      <div class="field"><label>気温 <span class="unit">℃</span></label><input type="number" step="0.1" inputmode="decimal" class="js-airTemp" value="${esc(s.airTemp)}"></div>
+      <div class="field"><label>水温 <span class="unit">℃</span></label><input type="number" step="0.1" inputmode="decimal" class="js-waterTemp" value="${esc(s.waterTemp)}"></div>
+      <div class="field"><label>入水人数 <span class="unit">名</span></label><input type="number" inputmode="numeric" class="js-headcount" value="${esc(s.headcount)}"></div>
+    </div>
+    <div class="row" style="margin-top:10px;">
+      <div class="field"><label>入水（開始）</label><input type="time" class="js-startTime" value="${esc(s.startTime)}"></div>
+      <div class="field"><label>退水（終了）</label><input type="time" class="js-endTime" value="${esc(s.endTime)}"></div>
+    </div>
+    <div class="row" style="margin-top:10px;">
+      <div class="field"><label>監視者① <span class="unit">必須</span></label><input list="staffList" class="js-watcher1" value="${esc(s.watcher1)}"></div>
+      <div class="field"><label>監視者②</label><input list="staffList" class="js-watcher2" value="${esc(s.watcher2)}"></div>
+    </div>
+    <div class="row" style="margin-top:10px;">
+      <div class="field"><label>トイレ係</label><input list="staffList" class="js-toilet" value="${esc(s.toilet)}"></div>
+      <div class="field"><label>入水保育者①</label><input list="staffList" class="js-staff1" value="${esc(s.staff1)}"></div>
+      <div class="field"><label>入水保育者②</label><input list="staffList" class="js-staff2" value="${esc(s.staff2)}"></div>
+    </div>
+  </div>`;
+}
+function readSession(card) {
+  const g = sel => card.querySelector(sel).value.trim();
+  return {
+    className: g('.js-class'),
+    airTemp: g('.js-airTemp'), waterTemp: g('.js-waterTemp'), headcount: g('.js-headcount'),
+    startTime: g('.js-startTime'), endTime: g('.js-endTime'),
+    watcher1: g('.js-watcher1'), watcher2: g('.js-watcher2'),
+    toilet: g('.js-toilet'), staff1: g('.js-staff1'), staff2: g('.js-staff2'),
+  };
+}
+function renderSessions(sessions) {
+  const box = el('sessions');
+  box.innerHTML = sessions.map((s,i)=>sessionTemplate(s,i)).join('');
+  // 監視者①を前のセッションから引き継ぎやすいよう、再採番のため番号だけ更新
+}
+function reindexSessions() {
+  [...el('sessions').children].forEach((c,i)=>{
+    c.dataset.idx = i;
+    c.querySelector('.badge').textContent = `${i+1}組目`;
+  });
+}
+
+// ============ 記録入力 画面 ============
+function loadEntry(date) {
+  currentDate = date;
+  el('entryDate').value = date;
+  const rec = state.records[date];
+  // 塩素
+  el('cl1Time').value = rec?.chlorine?.t1 || '';
+  el('cl1Val').value  = rec?.chlorine?.v1 ?? '';
+  el('cl2Time').value = rec?.chlorine?.t2 || '';
+  el('cl2Val').value  = rec?.chlorine?.v2 ?? '';
+  // その他
+  el('weather').value = rec?.weather || '';
+  el('recorder').value = rec?.recorder || '';
+  el('note').value = rec?.note || '';
+  // セッション（既定3つ）
+  const sessions = (rec?.sessions && rec.sessions.length) ? rec.sessions : [{},{},{}];
+  renderSessions(sessions);
+  // 監査情報
+  el('auditInfo').textContent = rec
+    ? `作成: ${fmtStamp(rec.createdAt)}　最終更新: ${fmtStamp(rec.updatedAt)}`
+    : 'この日の記録はまだありません。入力して保存してください。';
+  el('saveStatus').textContent = '';
+}
+
+function collectEntry() {
+  const sessions = [...el('sessions').children].map(readSession)
+    .filter(s => s.className || s.headcount || s.watcher1); // 空セッションは除外
+  const existing = state.records[currentDate];
+  return {
+    date: currentDate,
+    weather: el('weather').value,
+    recorder: el('recorder').value.trim(),
+    note: el('note').value.trim(),
+    chlorine: {
+      t1: el('cl1Time').value, v1: el('cl1Val').value,
+      t2: el('cl2Time').value, v2: el('cl2Val').value,
+    },
+    sessions,
+    createdAt: existing?.createdAt || Date.now(),
+    updatedAt: Date.now(),
+  };
+}
+
+async function saveEntry() {
+  const rec = collectEntry();
+  // 簡易バリデーション
+  const warnings = [];
+  rec.sessions.forEach((s,i)=>{
+    if (s.className && !s.watcher1) warnings.push(`${i+1}組目: 監視者①が未入力です`);
+  });
+  await persistRecord(rec);
+  el('auditInfo').textContent = `作成: ${fmtStamp(rec.createdAt)}　最終更新: ${fmtStamp(rec.updatedAt)}`;
+  el('saveStatus').innerHTML = warnings.length
+    ? `保存しました。<span class="warn">（${warnings.join(' / ')}）</span>`
+    : '✅ 保存しました。';
+  refreshAll();
+}
+
+// ============ 一覧 画面 ============
+function renderList() {
+  const monthFilter = el('filterMonth').value; // YYYY-MM
+  let dates = Object.keys(state.records).sort().reverse();
+  if (monthFilter) dates = dates.filter(d => d.startsWith(monthFilter));
+  const area = el('listArea');
+  if (!dates.length) { area.innerHTML = `<div class="empty">記録がありません。</div>`; return; }
+
+  const rows = dates.map(d => {
+    const r = state.records[d];
+    const classes = r.sessions.map(s=>s.className).filter(Boolean).join('、') || '—';
+    const total = r.sessions.reduce((a,s)=>a + (parseInt(s.headcount)||0), 0);
+    const cl = [r.chlorine?.v1, r.chlorine?.v2].filter(v=>v!=='' && v!=null).join(' / ') || '—';
+    return `<tr class="clickable" data-date="${d}">
+      <td>${fmtDateJa(d)}</td>
+      <td>${esc(classes)}</td>
+      <td style="text-align:center;">${total||'—'}名</td>
+      <td style="text-align:center;">${r.sessions.length}組</td>
+      <td style="text-align:center;">${esc(cl)}</td>
+      <td style="text-align:center; white-space:nowrap;">
+        <button class="btn ghost sm js-open" data-date="${d}">開く</button>
+        <button class="btn danger sm js-del" data-date="${d}">削除</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  area.innerHTML = `<table>
+    <thead><tr><th>日付</th><th>入水クラス</th><th>合計人数</th><th>回数</th><th>塩素(mg/L)</th><th></th></tr></thead>
+    <tbody>${rows}</tbody></table>`;
+}
+
+// ============ 設定 画面 ============
+function renderClasses() {
+  const box = el('classList');
+  box.innerHTML = state.classes.map(c => `
+    <div class="list-item" data-id="${c.id}">
+      <span class="name">${esc(c.name)}</span>
+      <button class="btn gray sm js-edit-class">編集</button>
+      <button class="btn danger sm js-del-class">削除</button>
+    </div>`).join('') || `<div class="hint">クラスが未登録です。</div>`;
+}
+function renderStaff() {
+  const box = el('staffMaster');
+  box.innerHTML = state.staff.map((n,i) => `
+    <div class="list-item" data-i="${i}">
+      <span class="name">${esc(n)}</span>
+      <button class="btn danger sm js-del-staff">削除</button>
+    </div>`).join('') || `<div class="hint">職員が未登録です（任意）。</div>`;
+}
+function renderDatalists() {
+  el('staffList').innerHTML = state.staff.map(n=>`<option value="${esc(n)}">`).join('');
+  el('classDatalist').innerHTML = state.classes.map(c=>`<option value="${esc(c.name)}">`).join('');
+}
+
+// ============ 印刷 ============
+function buildPrint(date) {
+  const r = state.records[date];
+  if (!r) { alert('保存してから印刷してください。'); return false; }
+  const sx = r.sessions.map((s,i)=>`
+    <tr>
+      <td style="text-align:center;">${i+1}</td>
+      <td>${esc(s.className)}</td>
+      <td style="text-align:center;">${esc(s.startTime)}〜${esc(s.endTime)}</td>
+      <td style="text-align:center;">${esc(s.airTemp)}</td>
+      <td style="text-align:center;">${esc(s.waterTemp)}</td>
+      <td style="text-align:center;">${esc(s.headcount)}</td>
+      <td>${esc(s.watcher1)}${s.watcher2?'、'+esc(s.watcher2):''}</td>
+      <td>${esc(s.toilet)}</td>
+      <td>${esc(s.staff1)}${s.staff2?'、'+esc(s.staff2):''}</td>
+    </tr>`).join('');
+  el('printArea').innerHTML = `
+    <h1>プール活動記録</h1>
+    <div class="pmeta">${fmtDateJa(date)} ／ 天気：${esc(r.weather)||'—'} ／ 記録者：${esc(r.recorder)||'—'}</div>
+    <table>
+      <thead><tr>
+        <th style="width:5%;">回</th><th>入水クラス</th><th>入水時間</th>
+        <th>気温℃</th><th>水温℃</th><th>人数</th><th>監視者(2名)</th><th>トイレ</th><th>入水保育者</th>
+      </tr></thead>
+      <tbody>${sx || '<tr><td colspan="9" style="text-align:center;">記録なし</td></tr>'}</tbody>
+    </table>
+    <table>
+      <thead><tr><th colspan="4">塩素濃度（遊離残留塩素 mg/L）</th></tr></thead>
+      <tbody><tr>
+        <td>1回目　${esc(r.chlorine?.t1)||'—'}</td><td style="text-align:center;">${esc(r.chlorine?.v1)||'—'} mg/L</td>
+        <td>2回目　${esc(r.chlorine?.t2)||'—'}</td><td style="text-align:center;">${esc(r.chlorine?.v2)||'—'} mg/L</td>
+      </tr></tbody>
+    </table>
+    ${r.note ? `<div style="margin-top:8px;"><b>備考：</b>${esc(r.note)}</div>` : ''}
+    <div class="sig">記録日時：${fmtStamp(r.createdAt)}　／　最終更新：${fmtStamp(r.updatedAt)}　　　　　　確認印：____________</div>`;
+  return true;
+}
+
+// ============ CSV / バックアップ ============
+function exportCsv() {
+  const dates = Object.keys(state.records).sort();
+  if (!dates.length) { alert('記録がありません。'); return; }
+  const head = ['日付','回','入水クラス','入水開始','退水','気温(℃)','水温(℃)','入水人数','監視者1','監視者2','トイレ','入水保育者1','入水保育者2','塩素1時刻','塩素1(mg/L)','塩素2時刻','塩素2(mg/L)','天気','記録者','備考','作成日時','更新日時'];
+  const rows = [head];
+  dates.forEach(d => {
+    const r = state.records[d];
+    if (!r.sessions.length) {
+      rows.push([d,'','','','','','','','','','','','', r.chlorine?.t1||'', r.chlorine?.v1||'', r.chlorine?.t2||'', r.chlorine?.v2||'', r.weather||'', r.recorder||'', r.note||'', fmtStamp(r.createdAt), fmtStamp(r.updatedAt)]);
+    }
+    r.sessions.forEach((s,i)=>{
+      rows.push([d, i+1, s.className, s.startTime, s.endTime, s.airTemp, s.waterTemp, s.headcount, s.watcher1, s.watcher2, s.toilet, s.staff1, s.staff2,
+        r.chlorine?.t1||'', r.chlorine?.v1||'', r.chlorine?.t2||'', r.chlorine?.v2||'', r.weather||'', r.recorder||'', r.note||'', fmtStamp(r.createdAt), fmtStamp(r.updatedAt)]);
+    });
+  });
+  const csv = '﻿' + rows.map(r => r.map(c => `"${String(c??'').replace(/"/g,'""')}"`).join(',')).join('\r\n');
+  downloadFile(csv, `プール活動記録_${todayStr()}.csv`, 'text/csv');
+}
+function backup() {
+  downloadFile(JSON.stringify(state, null, 2), `プール活動記録_バックアップ_${todayStr()}.json`, 'application/json');
+}
+function downloadFile(content, filename, type) {
+  const blob = new Blob([content], {type: type+';charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = filename; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+}
+
+// ============ 画面更新まとめ ============
+function refreshAll() {
+  renderList();
+  renderClasses();
+  renderStaff();
+  renderDatalists();
+}
+
+// ============ イベント設定 ============
+function bindEvents() {
+  // タブ切替
+  document.querySelectorAll('nav button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+      document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+      btn.classList.add('active');
+      el('view-'+btn.dataset.view).classList.add('active');
+    });
+  });
+
+  el('entryDate').addEventListener('change', e => loadEntry(e.target.value));
+  el('btnSave').addEventListener('click', saveEntry);
+  el('btnPrint').addEventListener('click', async () => {
+    // 印刷前に現在の入力を保存
+    await saveEntry();
+    if (buildPrint(currentDate)) window.print();
+  });
+
+  // セッション追加・削除（イベント委任）
+  el('btnAddSession').addEventListener('click', () => {
+    // 監視者などを前のセッションから引き継ぐ
+    const cards = [...el('sessions').children];
+    let carry = {};
+    if (cards.length) {
+      const last = readSession(cards[cards.length-1]);
+      carry = { watcher1: last.watcher1, watcher2: last.watcher2, toilet: last.toilet };
+    }
+    el('sessions').insertAdjacentHTML('beforeend', sessionTemplate(carry, cards.length));
+  });
+  el('sessions').addEventListener('click', e => {
+    if (e.target.classList.contains('js-del-session')) {
+      e.target.closest('.session-card').remove();
+      reindexSessions();
+    }
+  });
+
+  // 一覧
+  el('filterMonth').addEventListener('change', renderList);
+  el('listArea').addEventListener('click', e => {
+    const openBtn = e.target.closest('.js-open');
+    const delBtn = e.target.closest('.js-del');
+    const row = e.target.closest('tr.clickable');
+    if (delBtn) {
+      const d = delBtn.dataset.date;
+      if (confirm(`${fmtDateJa(d)} の記録を削除しますか？`)) deleteRecord(d);
+      return;
+    }
+    const date = openBtn?.dataset.date || row?.dataset.date;
+    if (date) {
+      loadEntry(date);
+      document.querySelector('nav button[data-view="entry"]').click();
+    }
+  });
+  el('btnCsv').addEventListener('click', exportCsv);
+  el('btnBackup').addEventListener('click', backup);
+  el('btnRestore').addEventListener('click', () => el('restoreFile').click());
+  el('restoreFile').addEventListener('change', handleRestore);
+
+  // 設定: クラス
+  el('btnAddClass').addEventListener('click', () => {
+    const name = el('newClassName').value.trim();
+    if (!name) return;
+    state.classes.push({id: uid(), name});
+    el('newClassName').value = '';
+    persistMaster(); renderClasses(); renderDatalists();
+  });
+  el('classList').addEventListener('click', e => {
+    const item = e.target.closest('.list-item'); if (!item) return;
+    const id = item.dataset.id;
+    if (e.target.classList.contains('js-del-class')) {
+      state.classes = state.classes.filter(c=>c.id!==id);
+      persistMaster(); renderClasses(); renderDatalists();
+    } else if (e.target.classList.contains('js-edit-class')) {
+      const c = state.classes.find(c=>c.id===id);
+      const nv = prompt('クラス名を編集', c.name);
+      if (nv && nv.trim()) { c.name = nv.trim(); persistMaster(); renderClasses(); renderDatalists(); }
+    }
+  });
+
+  // 設定: 職員
+  el('btnAddStaff').addEventListener('click', () => {
+    const name = el('newStaffName').value.trim();
+    if (!name) return;
+    if (!state.staff.includes(name)) state.staff.push(name);
+    el('newStaffName').value = '';
+    persistMaster(); renderStaff(); renderDatalists();
+  });
+  el('staffMaster').addEventListener('click', e => {
+    if (e.target.classList.contains('js-del-staff')) {
+      const i = +e.target.closest('.list-item').dataset.i;
+      state.staff.splice(i,1);
+      persistMaster(); renderStaff(); renderDatalists();
+    }
+  });
+
+  // 設定: Firebase
+  el('btnSaveFb').addEventListener('click', async () => {
+    const txt = el('fbConfig').value.trim();
+    if (!txt) { alert('Firebaseの設定を貼り付けてください。'); return; }
+    let cfg;
+    try { cfg = JSON.parse(txt); }
+    catch { alert('JSONの形式が正しくありません。{ } で囲まれた設定を貼り付けてください。'); return; }
+    localStorage.setItem(LS_FB, JSON.stringify(cfg));
+    el('fbStatus').textContent = '接続中…';
+    try {
+      cloud = await connectCloud(cfg);
+      setModeBadge(true);
+      el('fbStatus').textContent = '✅ クラウド共有に接続しました。既存の記録を同期します。';
+      // 既存ローカルデータをクラウドへ初回アップロード
+      for (const rec of Object.values(state.records)) await cloud.saveRecord(rec);
+      await cloud.saveMaster({classes: state.classes, staff: state.staff});
+    } catch (e) {
+      console.error(e); setModeBadge(false);
+      el('fbStatus').innerHTML = '<span class="warn">接続に失敗しました。設定内容と Firestore の有効化を確認してください。</span>';
+    }
+  });
+  el('btnClearFb').addEventListener('click', () => {
+    if (!confirm('クラウド共有を解除し、この端末のローカル保存に戻します。よろしいですか？')) return;
+    localStorage.removeItem(LS_FB);
+    cloud = null; setModeBadge(false);
+    el('fbConfig').value = '';
+    el('fbStatus').textContent = 'ローカル保存に戻しました。（再読み込みすると完全に切断されます）';
+  });
+}
+
+async function deleteRecord(date) {
+  delete state.records[date];
+  saveLocal();
+  if (cloud) { try { await cloud.deleteRecord(date); } catch(e){ console.error(e);} }
+  renderList();
+  if (date === currentDate) loadEntry(currentDate);
+}
+
+function handleRestore(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result);
+      if (!data.records) throw new Error('形式が不正です');
+      if (!confirm('バックアップを読み込みます。現在のデータは上書きされます。よろしいですか？')) return;
+      state = Object.assign({records:{},classes:[],staff:[]}, data);
+      saveLocal(); refreshAll(); loadEntry(currentDate);
+      alert('復元しました。');
+    } catch (err) { alert('読み込みに失敗しました：' + err.message); }
+    e.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
+// ============ 起動 ============
+async function main() {
+  loadLocal();
+  bindEvents();
+  el('filterMonth').value = todayStr().slice(0,7);
+  loadEntry(currentDate);
+  refreshAll();
+  // 保存済みのFirebase設定があれば接続
+  const fbRaw = localStorage.getItem(LS_FB);
+  if (fbRaw) { el('fbConfig').value = fbRaw; await initCloudIfConfigured(); }
+}
+main();
+</script>
+</body>
+</html>
