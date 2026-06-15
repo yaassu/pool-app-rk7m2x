@@ -272,13 +272,15 @@
         初期状態は<b>この端末だけに保存</b>されます。複数の端末・職員で同じ記録を共有するには、無料の Firebase を設定します。
         設定方法は同じフォルダの「<b>セットアップ手順.md</b>」を参照してください。下の欄に Firebase の設定（firebaseConfig）を貼り付けて保存すると、自動でクラウド共有に切り替わります。
       </p>
-      <div class="field wide"><label>Firebase 設定（JSON）</label>
-        <textarea id="fbConfig" placeholder='{
-  "apiKey": "...",
-  "authDomain": "...",
-  "projectId": "...",
+      <div class="field wide"><label>Firebase 設定（コンソールのコードをそのまま貼り付けOK）</label>
+        <textarea id="fbConfig" placeholder='Firebaseの画面に出る次のようなコードを、そのまま貼り付けてください：
+
+const firebaseConfig = {
+  apiKey: "AIza...",
+  authDomain: "xxxx.firebaseapp.com",
+  projectId: "xxxx",
   ...
-}' style="min-height:140px; font-family:monospace; font-size:13px;"></textarea>
+};' style="min-height:160px; font-family:monospace; font-size:13px;"></textarea>
       </div>
       <div class="row" style="margin-top:10px;">
         <button class="btn sm" id="btnSaveFb">保存して接続</button>
@@ -306,7 +308,19 @@
    ========================================================================= */
 
 const LS_DATA = 'pool_app_data_v1';     // records / classes / staff
-const LS_FB   = 'pool_app_fbconfig_v1'; // Firebaseの設定JSON
+const LS_FB   = 'pool_app_fbconfig_v1'; // Firebaseの設定JSON（手動設定したとき）
+const LS_FB_OFF = 'pool_app_fb_disabled'; // 埋め込み共有を無効化したフラグ
+
+// ★クラウド共有の設定（このアプリに組み込み済み）。各端末はURLを開くだけで自動共有。
+//   ※apiKey等は公開アプリに含まれる公開情報のため埋め込んで問題ありません。
+const EMBEDDED_FB_CONFIG = {
+  apiKey: "AIzaSyDTZVDpauFZlwF6hfPHl--B8ACU13eO45k",
+  authDomain: "pool-record.firebaseapp.com",
+  projectId: "pool-record",
+  storageBucket: "pool-record.firebasestorage.app",
+  messagingSenderId: "822991657774",
+  appId: "1:822991657774:web:1531290714eded7d4938bf"
+};
 
 // ---- アプリ状態 ----
 let state = {
@@ -336,6 +350,23 @@ function fmtStamp(ts) {
 }
 function el(id) { return document.getElementById(id); }
 function esc(s) { return String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+// Firebaseの設定を寛容にパース（コンソールのコードをそのまま貼ってもOK）
+function parseFirebaseConfig(text) {
+  let t = (text || '').trim();
+  // 「const firebaseConfig =」など、最初の { より前を削除
+  const i = t.indexOf('{'); const j = t.lastIndexOf('}');
+  if (i === -1 || j === -1) throw new Error('{ } が見つかりません');
+  t = t.slice(i, j + 1);
+  // まず厳密JSONで試す
+  try { return JSON.parse(t); } catch (e) {}
+  // キーを"で囲む / 'を"に / 末尾カンマ除去
+  let s = t
+    .replace(/([{,]\s*)([A-Za-z0-9_$]+)\s*:/g, '$1"$2":')
+    .replace(/'/g, '"')
+    .replace(/,(\s*[}\]])/g, '$1');
+  return JSON.parse(s);
+}
 
 // ============ 保存ロジック（ローカル / クラウド共通入口） ============
 function saveLocal() {
@@ -381,9 +412,12 @@ async function connectCloud(configObj) {
   const recCol = fs.collection(db, 'pool_records');
   const masterDoc = fs.doc(db, 'pool_master', 'main');
 
-  // リアルタイム購読（他端末の変更を自動反映）
+  // リアルタイム購読（他端末の追加・編集・削除を自動反映）
   fs.onSnapshot(recCol, snap => {
-    snap.forEach(docSnap => { state.records[docSnap.id] = docSnap.data(); });
+    snap.docChanges().forEach(ch => {
+      if (ch.type === 'removed') delete state.records[ch.doc.id];
+      else state.records[ch.doc.id] = ch.doc.data();
+    });
     saveLocal();
     refreshAll();
   });
@@ -772,9 +806,11 @@ function bindEvents() {
     const txt = el('fbConfig').value.trim();
     if (!txt) { alert('Firebaseの設定を貼り付けてください。'); return; }
     let cfg;
-    try { cfg = JSON.parse(txt); }
-    catch { alert('JSONの形式が正しくありません。{ } で囲まれた設定を貼り付けてください。'); return; }
+    try { cfg = parseFirebaseConfig(txt); }
+    catch { alert('設定を読み取れませんでした。Firebaseの「const firebaseConfig = { ... };」を { } ごと貼り付けてください。'); return; }
+    if (!cfg.projectId || !cfg.apiKey) { alert('apiKey または projectId が見当たりません。設定が途中で切れていないか確認してください。'); return; }
     localStorage.setItem(LS_FB, JSON.stringify(cfg));
+    localStorage.removeItem(LS_FB_OFF);
     el('fbStatus').textContent = '接続中…';
     try {
       cloud = await connectCloud(cfg);
@@ -789,11 +825,12 @@ function bindEvents() {
     }
   });
   el('btnClearFb').addEventListener('click', () => {
-    if (!confirm('クラウド共有を解除し、この端末のローカル保存に戻します。よろしいですか？')) return;
+    if (!confirm('この端末だけクラウド共有を解除し、ローカル保存に戻します。よろしいですか？')) return;
     localStorage.removeItem(LS_FB);
+    localStorage.setItem(LS_FB_OFF, '1');
     cloud = null; setModeBadge(false);
     el('fbConfig').value = '';
-    el('fbStatus').textContent = 'ローカル保存に戻しました。（再読み込みすると完全に切断されます）';
+    el('fbStatus').textContent = 'この端末はローカル保存に戻しました。（再読み込みすると完全に切断されます）';
   });
 }
 
@@ -829,9 +866,22 @@ async function main() {
   el('filterMonth').value = todayStr().slice(0,7);
   loadEntry(currentDate);
   refreshAll();
-  // 保存済みのFirebase設定があれば接続
+  // 接続の優先順位：①手動設定 → ②アプリに組み込んだ設定（解除されていなければ）
   const fbRaw = localStorage.getItem(LS_FB);
-  if (fbRaw) { el('fbConfig').value = fbRaw; await initCloudIfConfigured(); }
+  if (fbRaw) {
+    el('fbConfig').value = fbRaw;
+    await initCloudIfConfigured();
+  } else if (EMBEDDED_FB_CONFIG && localStorage.getItem(LS_FB_OFF) !== '1') {
+    el('fbConfig').value = JSON.stringify(EMBEDDED_FB_CONFIG, null, 2);
+    try {
+      cloud = await connectCloud(EMBEDDED_FB_CONFIG);
+      setModeBadge(true);
+      el('fbStatus').textContent = '✅ クラウド共有中（このアプリに設定が組み込まれています）。';
+    } catch (e) {
+      console.error(e); setModeBadge(false);
+      el('fbStatus').innerHTML = '<span class="warn">クラウド接続に失敗しました。通信状態を確認してください。</span>';
+    }
+  }
 }
 main();
 </script>
