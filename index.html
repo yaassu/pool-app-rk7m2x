@@ -219,6 +219,10 @@
     <div class="card" style="margin-top:16px;">
       <h2>その他</h2>
       <div class="row">
+        <div class="field"><label>気温 <span class="unit">℃</span></label><input type="number" step="0.1" inputmode="decimal" id="airTemp"></div>
+        <div class="field"><label>水温 <span class="unit">℃</span></label><input type="number" step="0.1" inputmode="decimal" id="waterTemp"></div>
+      </div>
+      <div class="row" style="margin-top:12px;">
         <div class="field"><label>天気</label>
           <select id="weather">
             <option value="">—</option>
@@ -476,8 +480,6 @@ function sessionTemplate(s = {}, idx = 0) {
       </div>
     </div>
     <div class="row" style="margin-top:10px;">
-      <div class="field"><label>気温 <span class="unit">℃</span></label><input type="number" step="0.1" inputmode="decimal" class="js-airTemp" value="${esc(s.airTemp)}"></div>
-      <div class="field"><label>水温 <span class="unit">℃</span></label><input type="number" step="0.1" inputmode="decimal" class="js-waterTemp" value="${esc(s.waterTemp)}"></div>
       <div class="field"><label>入水人数 <span class="unit">名</span></label><input type="number" inputmode="numeric" class="js-headcount" value="${esc(s.headcount)}"></div>
     </div>
     <div class="row" style="margin-top:10px;">
@@ -499,7 +501,7 @@ function readSession(card) {
   const g = sel => card.querySelector(sel).value.trim();
   return {
     className: g('.js-class'),
-    airTemp: g('.js-airTemp'), waterTemp: g('.js-waterTemp'), headcount: g('.js-headcount'),
+    headcount: g('.js-headcount'),
     startTime: g('.js-startTime'), endTime: g('.js-endTime'),
     watcher1: g('.js-watcher1'), watcher2: g('.js-watcher2'),
     toilet: g('.js-toilet'), staff1: g('.js-staff1'), staff2: g('.js-staff2'),
@@ -527,7 +529,9 @@ function loadEntry(date) {
   el('cl1Val').value  = rec?.chlorine?.v1 ?? '';
   el('cl2Time').value = rec?.chlorine?.t2 || '';
   el('cl2Val').value  = rec?.chlorine?.v2 ?? '';
-  // その他
+  // その他（気温・水温は1日1回。旧データは1組目の値を引き継ぐ）
+  el('airTemp').value   = rec?.airTemp   ?? rec?.sessions?.[0]?.airTemp   ?? '';
+  el('waterTemp').value = rec?.waterTemp ?? rec?.sessions?.[0]?.waterTemp ?? '';
   el('weather').value = rec?.weather || '';
   el('recorder').value = rec?.recorder || '';
   el('note').value = rec?.note || '';
@@ -547,6 +551,8 @@ function collectEntry() {
   const existing = state.records[currentDate];
   return {
     date: currentDate,
+    airTemp: el('airTemp').value,
+    waterTemp: el('waterTemp').value,
     weather: el('weather').value,
     recorder: el('recorder').value.trim(),
     note: el('note').value.trim(),
@@ -633,13 +639,13 @@ function renderDatalists() {
 function buildPrint(date) {
   const r = state.records[date];
   if (!r) { alert('保存してから印刷してください。'); return false; }
+  const airTemp = r.airTemp ?? r.sessions?.[0]?.airTemp ?? '';
+  const waterTemp = r.waterTemp ?? r.sessions?.[0]?.waterTemp ?? '';
   const sx = r.sessions.map((s,i)=>`
     <tr>
       <td style="text-align:center;">${i+1}</td>
       <td>${esc(s.className)}</td>
       <td style="text-align:center;">${esc(s.startTime)}〜${esc(s.endTime)}</td>
-      <td style="text-align:center;">${esc(s.airTemp)}</td>
-      <td style="text-align:center;">${esc(s.waterTemp)}</td>
       <td style="text-align:center;">${esc(s.headcount)}</td>
       <td>${esc(s.watcher1)}${s.watcher2?'、'+esc(s.watcher2):''}</td>
       <td>${esc(s.toilet)}</td>
@@ -647,13 +653,13 @@ function buildPrint(date) {
     </tr>`).join('');
   el('printArea').innerHTML = `
     <h1>プール活動記録</h1>
-    <div class="pmeta">${fmtDateJa(date)} ／ 天気：${esc(r.weather)||'—'} ／ 記録者：${esc(r.recorder)||'—'}</div>
+    <div class="pmeta">${fmtDateJa(date)} ／ 天気：${esc(r.weather)||'—'} ／ 気温：${esc(airTemp)||'—'}℃ ／ 水温：${esc(waterTemp)||'—'}℃ ／ 記録者：${esc(r.recorder)||'—'}</div>
     <table>
       <thead><tr>
         <th style="width:5%;">回</th><th>入水クラス</th><th>入水時間</th>
-        <th>気温℃</th><th>水温℃</th><th>人数</th><th>監視者(2名)</th><th>トイレ</th><th>入水保育者</th>
+        <th>人数</th><th>監視者(2名)</th><th>トイレ</th><th>入水保育者</th>
       </tr></thead>
-      <tbody>${sx || '<tr><td colspan="9" style="text-align:center;">記録なし</td></tr>'}</tbody>
+      <tbody>${sx || '<tr><td colspan="7" style="text-align:center;">記録なし</td></tr>'}</tbody>
     </table>
     <table>
       <thead><tr><th colspan="4">塩素濃度（遊離残留塩素 mg/L）</th></tr></thead>
@@ -675,11 +681,13 @@ function exportCsv() {
   const rows = [head];
   dates.forEach(d => {
     const r = state.records[d];
+    const air = r.airTemp ?? r.sessions?.[0]?.airTemp ?? '';
+    const water = r.waterTemp ?? r.sessions?.[0]?.waterTemp ?? '';
     if (!r.sessions.length) {
-      rows.push([d,'','','','','','','','','','','','', r.chlorine?.t1||'', r.chlorine?.v1||'', r.chlorine?.t2||'', r.chlorine?.v2||'', r.weather||'', r.recorder||'', r.note||'', fmtStamp(r.createdAt), fmtStamp(r.updatedAt)]);
+      rows.push([d,'','','','', air, water,'','','','','','', r.chlorine?.t1||'', r.chlorine?.v1||'', r.chlorine?.t2||'', r.chlorine?.v2||'', r.weather||'', r.recorder||'', r.note||'', fmtStamp(r.createdAt), fmtStamp(r.updatedAt)]);
     }
     r.sessions.forEach((s,i)=>{
-      rows.push([d, i+1, s.className, s.startTime, s.endTime, s.airTemp, s.waterTemp, s.headcount, s.watcher1, s.watcher2, s.toilet, s.staff1, s.staff2,
+      rows.push([d, i+1, s.className, s.startTime, s.endTime, air, water, s.headcount, s.watcher1, s.watcher2, s.toilet, s.staff1, s.staff2,
         r.chlorine?.t1||'', r.chlorine?.v1||'', r.chlorine?.t2||'', r.chlorine?.v2||'', r.weather||'', r.recorder||'', r.note||'', fmtStamp(r.createdAt), fmtStamp(r.updatedAt)]);
     });
   });
