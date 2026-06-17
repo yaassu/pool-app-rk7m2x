@@ -492,8 +492,11 @@ function sessionTemplate(s = {}, idx = 0) {
     </div>
     <div class="row" style="margin-top:10px;">
       <div class="field"><label>トイレ係</label><input list="staffList" class="js-toilet" value="${esc(s.toilet)}"></div>
+    </div>
+    <div class="row" style="margin-top:10px;">
       <div class="field"><label>入水保育者①</label><input list="staffList" class="js-staff1" value="${esc(s.staff1)}"></div>
       <div class="field"><label>入水保育者②</label><input list="staffList" class="js-staff2" value="${esc(s.staff2)}"></div>
+      <div class="field"><label>入水保育者③</label><input list="staffList" class="js-staff3" value="${esc(s.staff3)}"></div>
     </div>
   </div>`;
 }
@@ -504,7 +507,7 @@ function readSession(card) {
     headcount: g('.js-headcount'),
     startTime: g('.js-startTime'), endTime: g('.js-endTime'),
     watcher1: g('.js-watcher1'), watcher2: g('.js-watcher2'),
-    toilet: g('.js-toilet'), staff1: g('.js-staff1'), staff2: g('.js-staff2'),
+    toilet: g('.js-toilet'), staff1: g('.js-staff1'), staff2: g('.js-staff2'), staff3: g('.js-staff3'),
   };
 }
 function renderSessions(sessions) {
@@ -649,7 +652,7 @@ function buildPrint(date) {
       <td style="text-align:center;">${esc(s.headcount)}</td>
       <td>${esc(s.watcher1)}${s.watcher2?'、'+esc(s.watcher2):''}</td>
       <td>${esc(s.toilet)}</td>
-      <td>${esc(s.staff1)}${s.staff2?'、'+esc(s.staff2):''}</td>
+      <td>${[s.staff1,s.staff2,s.staff3].filter(Boolean).map(esc).join('、')}</td>
     </tr>`).join('');
   el('printArea').innerHTML = `
     <h1>プール活動記録</h1>
@@ -677,17 +680,17 @@ function buildPrint(date) {
 function exportCsv() {
   const dates = Object.keys(state.records).sort();
   if (!dates.length) { alert('記録がありません。'); return; }
-  const head = ['日付','回','入水クラス','入水開始','退水','気温(℃)','水温(℃)','入水人数','監視者1','監視者2','トイレ','入水保育者1','入水保育者2','塩素1時刻','塩素1(mg/L)','塩素2時刻','塩素2(mg/L)','天気','記録者','備考','作成日時','更新日時'];
+  const head = ['日付','回','入水クラス','入水開始','退水','気温(℃)','水温(℃)','入水人数','監視者1','監視者2','トイレ','入水保育者1','入水保育者2','入水保育者3','塩素1時刻','塩素1(mg/L)','塩素2時刻','塩素2(mg/L)','天気','記録者','備考','作成日時','更新日時'];
   const rows = [head];
   dates.forEach(d => {
     const r = state.records[d];
     const air = r.airTemp ?? r.sessions?.[0]?.airTemp ?? '';
     const water = r.waterTemp ?? r.sessions?.[0]?.waterTemp ?? '';
     if (!r.sessions.length) {
-      rows.push([d,'','','','', air, water,'','','','','','', r.chlorine?.t1||'', r.chlorine?.v1||'', r.chlorine?.t2||'', r.chlorine?.v2||'', r.weather||'', r.recorder||'', r.note||'', fmtStamp(r.createdAt), fmtStamp(r.updatedAt)]);
+      rows.push([d,'','','','', air, water,'','','','','','','', r.chlorine?.t1||'', r.chlorine?.v1||'', r.chlorine?.t2||'', r.chlorine?.v2||'', r.weather||'', r.recorder||'', r.note||'', fmtStamp(r.createdAt), fmtStamp(r.updatedAt)]);
     }
     r.sessions.forEach((s,i)=>{
-      rows.push([d, i+1, s.className, s.startTime, s.endTime, air, water, s.headcount, s.watcher1, s.watcher2, s.toilet, s.staff1, s.staff2,
+      rows.push([d, i+1, s.className, s.startTime, s.endTime, air, water, s.headcount, s.watcher1, s.watcher2, s.toilet, s.staff1, s.staff2, s.staff3,
         r.chlorine?.t1||'', r.chlorine?.v1||'', r.chlorine?.t2||'', r.chlorine?.v2||'', r.weather||'', r.recorder||'', r.note||'', fmtStamp(r.createdAt), fmtStamp(r.updatedAt)]);
     });
   });
